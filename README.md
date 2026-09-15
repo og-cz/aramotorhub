@@ -98,8 +98,6 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
     mvn clean javafx:run
    ```
 
-5. ** Enjoy!**
-
 ---
 
 ## Technologies Used
