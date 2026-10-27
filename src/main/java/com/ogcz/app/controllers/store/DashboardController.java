@@ -10,8 +10,6 @@ import com.ogcz.app.database.DatabaseConnection;
 import com.ogcz.app.database.User;
 import com.ogcz.app.database.UserSession;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.fxml.*;
 import javafx.scene.Node;
@@ -21,7 +19,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 public class DashboardController implements Initializable {
 
@@ -55,11 +52,6 @@ public class DashboardController implements Initializable {
         setupCategoryComboBox();
         loadDashboardStats();
         loadOrdersForCurrentStore();
-
-        Timeline timeline = new Timeline(
-                new KeyFrame(Duration.seconds(1), e -> loadDashboardStats()));
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        timeline.play();
     }
 
     public void loadOrdersForCurrentStore() {
@@ -127,38 +119,40 @@ public class DashboardController implements Initializable {
             return;
         }
 
-        String totalRevenueQuery = "SELECT SUM(total_price) AS revenue FROM `order` WHERE status = 'COMPLETED'";
-        String todayCompletedOrdersQuery = "SELECT COUNT(*) AS count FROM `order` WHERE status = 'COMPLETED' AND DATE(created_at) = CURDATE()";
-        String pendingOrdersQuery = "SELECT COUNT(*) AS count FROM `order` WHERE status = 'PENDING'";
-        String todayCustomersQuery = "SELECT COUNT(DISTINCT customer_id) AS count FROM `order` WHERE DATE(created_at) = CURDATE()";
+        // only count this seller's items, the order table is shared by every shop
+        String fromSellerItems = """
+                    FROM order_item oi
+                    JOIN product p ON oi.product_id = p.product_id
+                    JOIN `order` o ON oi.order_id = o.order_id
+                    WHERE p.seller_id = ?
+                """;
+        String totalRevenueQuery = "SELECT COALESCE(SUM(oi.price_at_purchase * oi.quantity), 0) AS revenue "
+                + fromSellerItems + " AND o.status = 'COMPLETED'";
+        String todayCompletedOrdersQuery = "SELECT COUNT(DISTINCT o.order_id) AS count "
+                + fromSellerItems + " AND o.status = 'COMPLETED' AND DATE(o.created_at) = CURDATE()";
+        String pendingOrdersQuery = "SELECT COUNT(DISTINCT o.order_id) AS count "
+                + fromSellerItems + " AND o.status = 'PENDING'";
+        String todayCustomersQuery = "SELECT COUNT(DISTINCT o.customer_id) AS count "
+                + fromSellerItems + " AND DATE(o.created_at) = CURDATE()";
+
+        int sellerId = currentUser.getUserId();
 
         try (Connection conn = DatabaseConnection.connect()) {
-            try (PreparedStatement stmt = conn.prepareStatement(totalRevenueQuery);
-                    ResultSet rs = stmt.executeQuery()) {
-                if (rs.next())
-                    labelTodayRevenue.setText(String.valueOf((int) rs.getDouble("revenue")));
-            }
-
-            try (PreparedStatement stmt = conn.prepareStatement(todayCompletedOrdersQuery);
-                    ResultSet rs = stmt.executeQuery()) {
-                if (rs.next())
-                    labelTodayCompleteOrder.setText(String.valueOf(rs.getInt("count")));
-            }
-
-            try (PreparedStatement stmt = conn.prepareStatement(pendingOrdersQuery);
-                    ResultSet rs = stmt.executeQuery()) {
-                if (rs.next())
-                    labelPendingOrder.setText(String.valueOf(rs.getInt("count")));
-            }
-
-            try (PreparedStatement stmt = conn.prepareStatement(todayCustomersQuery);
-                    ResultSet rs = stmt.executeQuery()) {
-                if (rs.next())
-                    labelTodayCustomer.setText(String.valueOf(rs.getInt("count")));
-            }
-
+            labelTodayRevenue.setText(String.valueOf((int) queryNumber(conn, totalRevenueQuery, sellerId)));
+            labelTodayCompleteOrder.setText(String.valueOf((int) queryNumber(conn, todayCompletedOrdersQuery, sellerId)));
+            labelPendingOrder.setText(String.valueOf((int) queryNumber(conn, pendingOrdersQuery, sellerId)));
+            labelTodayCustomer.setText(String.valueOf((int) queryNumber(conn, todayCustomersQuery, sellerId)));
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private double queryNumber(Connection conn, String sql, int sellerId) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, sellerId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : 0;
+            }
         }
     }
 
@@ -200,6 +194,7 @@ public class DashboardController implements Initializable {
 
     @FXML
     void handleHomeButton(ActionEvent event) {
+        loadScene(event, "/fxml/store/Profile.fxml");
     }
 
     @FXML

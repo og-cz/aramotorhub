@@ -64,9 +64,6 @@ public class ProductsController implements Initializable {
                 ProductsContainerController controller = fxmlLoader.getController();
                 controller.setData(product);
 
-             //   boolean isOwnProduct = product.getSellerId() == UserSession.getCurrentUser().getUserId();
-            //    controller.setShopMode(isOwnProduct);
-
                 productsContainer.setMaxWidth(200);
                 productsContainer.setMinWidth(200);
                 if (column == COLUMN_COUNT) {
@@ -75,7 +72,6 @@ public class ProductsController implements Initializable {
                 }
 
                 productsContainer.add(productBox, column++, row);
-                // GridPane.setMargin(productBox, new Insets(0));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -113,7 +109,7 @@ public class ProductsController implements Initializable {
                            u.first_name, u.last_name
                     FROM product p
                     JOIN user u ON p.seller_id = u.user_id
-                    WHERE p.category_id = (SELECT category_id FROM category WHERE name = ?)
+                    WHERE p.category_id = (SELECT category_id FROM category WHERE TRIM(name) = TRIM(?) LIMIT 1)
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
@@ -145,7 +141,6 @@ public class ProductsController implements Initializable {
 
                 ProductsContainerController controller = fxmlLoader.getController();
                 controller.setData(p);
-              //  controller.setShopMode(p.getSellerId() == UserSession.getCurrentUser().getUserId());
 
                 if (column == COLUMN_COUNT) {
                     column = 0;
@@ -208,6 +203,7 @@ public class ProductsController implements Initializable {
 
     @FXML
     void handleHomeButton(ActionEvent event) {
+        loadScene(event, "/fxml/store/Profile.fxml");
     }
 
     @FXML

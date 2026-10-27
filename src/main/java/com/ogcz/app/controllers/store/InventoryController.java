@@ -47,32 +47,42 @@ public class InventoryController implements Initializable {
         if (currentUser == null)
             return;
 
-        String query = """
+        String stockQuery = """
                     SELECT
-                        COALESCE(SUM(CASE WHEN status = 'AVAILABLE' THEN stock ELSE 0 END), 0) AS available_stock,
-                        COALESCE(SUM(CASE WHEN status = 'OUT_OF_STOCK' THEN stock ELSE 0 END), 0) AS out_of_stock,
+                        COALESCE(SUM(stock), 0) AS in_stock,
                         COALESCE(SUM(CASE WHEN status = 'AVAILABLE' THEN price * stock ELSE 0 END), 0) AS total_value
                     FROM product
                     WHERE seller_id = ?
                 """;
+        // "sold" used to be the stock of out-of-stock products, which is always ~0
+        String soldQuery = """
+                    SELECT COALESCE(SUM(oi.quantity), 0) AS sold
+                    FROM order_item oi
+                    JOIN product p ON oi.product_id = p.product_id
+                    JOIN `order` o ON oi.order_id = o.order_id
+                    WHERE p.seller_id = ? AND o.status <> 'CANCELLED'
+                """;
 
         try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement stmt = conn.prepareStatement(query)) {
+                PreparedStatement stockStmt = conn.prepareStatement(stockQuery);
+                PreparedStatement soldStmt = conn.prepareStatement(soldQuery)) {
 
-            stmt.setInt(1, currentUser.getUserId());
-            ResultSet rs = stmt.executeQuery();
+            stockStmt.setInt(1, currentUser.getUserId());
+            soldStmt.setInt(1, currentUser.getUserId());
 
-            if (rs.next()) {
-                int available = rs.getInt("available_stock");
-                int outOfStock = rs.getInt("out_of_stock");
-                int total = available + outOfStock;
-                double totalValue = rs.getDouble("total_value");
+            ResultSet stockRs = stockStmt.executeQuery();
+            ResultSet soldRs = soldStmt.executeQuery();
 
-                labelTotalProduct.setText(total + " items");
-                labelSoldStock.setText(outOfStock + " sold");
+            if (stockRs.next() && soldRs.next()) {
+                int inStock = stockRs.getInt("in_stock");
+                int sold = soldRs.getInt("sold");
+                double totalValue = stockRs.getDouble("total_value");
+
+                labelTotalProduct.setText(inStock + " items");
+                labelSoldStock.setText(sold + " sold");
                 labelTotalAssetValue.setText("₱" + String.format("%,.2f", totalValue));
 
-                updateStockPercentBar(outOfStock, total); // 👈 Visual bar update
+                updateStockPercentBar(sold, sold + inStock);
             }
 
         } catch (SQLException e) {
@@ -90,7 +100,7 @@ public class InventoryController implements Initializable {
         double redRatio = (double) sold / total;
         double greenRatio = 1.0 - redRatio;
 
-        double totalWidth = 200.0; // Set to match HBox's width
+        double totalWidth = 200.0; // same as the HBox width
         redPercent.setPrefWidth(totalWidth * redRatio);
         greenPercent.setPrefWidth(totalWidth * greenRatio);
     }
@@ -144,8 +154,8 @@ public class InventoryController implements Initializable {
         String query = """
                     SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                     FROM category c
-                    JOIN product p ON c.category_id = p.category_id
-                    WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                    LEFT JOIN product p ON c.category_id = p.category_id
+                        AND p.seller_id = ? AND p.status = 'AVAILABLE'
                     GROUP BY c.category_id, c.name
                     ORDER BY c.category_id ASC
                 """;

@@ -63,7 +63,7 @@ public class CategoriesController implements Initializable {
                    SELECT p.*, u.first_name, u.last_name
                     FROM product p
                     JOIN user u ON p.seller_id = u.user_id
-                    WHERE p.category_id = (SELECT category_id FROM category WHERE name = ?)
+                    WHERE p.category_id = (SELECT category_id FROM category WHERE TRIM(name) = TRIM(?) LIMIT 1)
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
@@ -93,9 +93,7 @@ public class CategoriesController implements Initializable {
                 product.setStoreName(storeName);
 
                 controller.setData(product);
-           //     controller.setShopMode(true);
 
-                // GridPane.setMargin(productCard, new Insets(0));
                 productsContainer.setMaxWidth(200);
                 productsContainer.setMinWidth(200);
 
@@ -116,7 +114,6 @@ public class CategoriesController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         loadCategoriesFromDatabase();
 
-        // Optional: Set listener to trigger loading on selection
         categoryComboBox.setOnAction(event -> {
             String selected = categoryComboBox.getValue();
             if (selected != null) {

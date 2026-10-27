@@ -80,7 +80,7 @@ public class ShopsController implements Initializable {
             Parent newRoot = loader.load();
 
             CategoriesController controller = loader.getController();
-            controller.setSelectedCategory(category);  
+            controller.setSelectedCategory(category);
 
             Stage currentStage = (Stage) categoryComboBox.getScene().getWindow();
             currentStage.setScene(new Scene(newRoot));
@@ -107,6 +107,7 @@ public class ShopsController implements Initializable {
 
             while (rs.next()) {
                 Shops shop = new Shops();
+                shop.setShopId(rs.getInt("user_id"));
                 shop.setShopName(rs.getString("first_name") + " " + rs.getString("last_name"));
                 shop.setShopEmail(rs.getString("email"));
                 shop.setShopAddress(rs.getString("address"));

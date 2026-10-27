@@ -69,15 +69,20 @@ public class InventoryUploadController {
         String stockText = productStock.getText();
         String categoryName = selectedCategoryName;
 
-        if (name.isEmpty() || description.isEmpty() || priceText.isEmpty() || stockText.isEmpty()
+        if (name.isBlank() || description.isBlank() || priceText.isEmpty() || stockText.isEmpty()
                 || categoryName == null) {
             showAlert("Please fill in all fields.", Alert.AlertType.WARNING);
             return;
         }
 
         try {
-            double price = Double.parseDouble(priceText);
-            int stock = Integer.parseInt(stockText);
+            int price = Integer.parseInt(priceText.trim()); // price column is an int
+            int stock = Integer.parseInt(stockText.trim());
+
+            if (price <= 0 || stock < 0) {
+                showAlert("Price must be above 0 and stock can't be negative.", Alert.AlertType.WARNING);
+                return;
+            }
 
             int categoryId = getCategoryIdByName(categoryName);
             if (categoryId == -1) {
@@ -87,15 +92,15 @@ public class InventoryUploadController {
 
             try (Connection conn = DatabaseConnection.connect();
                     PreparedStatement stmt = conn.prepareStatement(
-                            "INSERT INTO product (name, description, price, stock, category_id, seller_id, status, created_at) "
-                                    +
-                                    "VALUES (?, ?, ?, ?, ?, ?, 'AVAILABLE', NOW())")) {
+                            "INSERT INTO product (name, description, price, stock, category_id, seller_id, status) "
+                                    + "VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                 stmt.setString(1, name);
                 stmt.setString(2, description);
-                stmt.setDouble(3, price);
+                stmt.setInt(3, price);
                 stmt.setInt(4, stock);
                 stmt.setInt(5, categoryId);
                 stmt.setInt(6, UserSession.getCurrentUser().getUserId());
+                stmt.setString(7, stock > 0 ? "AVAILABLE" : "OUT_OF_STOCK");
 
                 int rows = stmt.executeUpdate();
                 if (rows > 0) {
@@ -107,7 +112,7 @@ public class InventoryUploadController {
             }
 
         } catch (NumberFormatException e) {
-            showAlert("Invalid number format for price or stock.", Alert.AlertType.ERROR);
+            showAlert("Price and stock must be whole numbers.", Alert.AlertType.ERROR);
         } catch (SQLException e) {
             showAlert("Database error: " + e.getMessage(), Alert.AlertType.ERROR);
         }
@@ -174,7 +179,8 @@ public class InventoryUploadController {
 
     @FXML
     void handleHomeButton(ActionEvent e) {
-        /* Optional */ }
+        navigateTo(e, "/fxml/store/Profile.fxml");
+    }
 
     @FXML
     void handleOpenSettings(ActionEvent e) {

@@ -9,8 +9,6 @@ import java.sql.SQLException;
 import com.ogcz.app.SettingsWindowHelper;
 import com.ogcz.app.database.DatabaseConnection;
 import com.ogcz.app.database.Shops;
-import com.ogcz.app.database.User;
-import com.ogcz.app.database.UserSession;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -107,50 +105,47 @@ public class ShopsQuickViewController {
 
     @FXML
     void handleCategoryEngine(ActionEvent event) {
-        System.out.println("handleCategoryEngine");
+        openCategoryView("Engine");
     }
 
     @FXML
     void handleCategoryBolts(ActionEvent event) {
-        System.out.println("handleCategoryBolts");
+        openCategoryView("Bolts");
     }
 
     @FXML
     void handleCategoryElectrical(ActionEvent event) {
-        System.out.println("handleCategoryElectrical");
+        openCategoryView("Electrical");
     }
 
     @FXML
     void handleCategoryExterior(ActionEvent event) {
-        System.out.println("handleCategoryExterior");
+        openCategoryView("Exterior");
     }
 
     @FXML
     void handleCategoryOil(ActionEvent event) {
-        System.out.println("handleCategoryOil");
+        openCategoryView("Oil");
     }
 
     @FXML
     void handleCategorySuspension(ActionEvent event) {
-        System.out.println("handleCategorySuspension");
+        openCategoryView("Suspension");
     }
 
     @FXML
     void handleCategoryTransmission(ActionEvent event) {
-        System.out.println("handleCategoryTransmission");
+        openCategoryView("Transmission");
     }
 
     @FXML
     void handleCategoryWheels(ActionEvent event) {
-        System.out.println("handleCategoryWheels");
+        openCategoryView("Wheels");
     }
 
     @FXML
     public void initialize() {
         setupCategoryComboBox();
-        System.out.println("labelCategory1: " + labelCategory1);
-        System.out.println("labelCategoryItem1: " + labelCategoryItem1);
-
     }
 
     private void setupCategoryComboBox() {
@@ -169,7 +164,7 @@ public class ShopsQuickViewController {
         }
 
         categoryComboBox.setOnAction(event -> {
-            String selectedCategory = (String) categoryComboBox.getValue();
+            String selectedCategory = categoryComboBox.getValue();
             if (selectedCategory != null) {
                 openCategoryView(selectedCategory);
             }
@@ -182,7 +177,7 @@ public class ShopsQuickViewController {
             Parent root = loader.load();
 
             CategoriesController controller = loader.getController();
-            controller.setSelectedCategory(categoryName); // This must exist in CategoriesController
+            controller.setSelectedCategory(categoryName);
 
             Stage stage = (Stage) categoryComboBox.getScene().getWindow();
             stage.setScene(new Scene(root));
@@ -203,34 +198,23 @@ public class ShopsQuickViewController {
     }
 
     public void loadCategoryDataForShop(int sellerId) {
-        User currentUser = UserSession.getCurrentUser();
-        if (currentUser == null) {
-            System.err.println("No user is logged in.");
-            return;
-        }
-        System.out.println("Logged in user ID: " + currentUser.getUserId());
-
         String query = """
                 SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                 FROM category c
-                JOIN product p ON c.category_id = p.category_id
-                WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                LEFT JOIN product p ON c.category_id = p.category_id
+                    AND p.seller_id = ? AND p.status = 'AVAILABLE'
                 GROUP BY c.category_id, c.name
                 ORDER BY c.category_id ASC
-                LIMIT 8;
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
                 PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            sellerId = currentUser.getUserId();
             stmt.setInt(1, sellerId);
             ResultSet rs = stmt.executeQuery();
 
-            boolean foundAny = false;
             int index = 1;
             while (rs.next() && index <= 8) {
-                foundAny = true;
                 String category = rs.getString("category_name");
                 int productCount = rs.getInt("product_count");
 
@@ -269,10 +253,6 @@ public class ShopsQuickViewController {
                     }
                 }
                 index++;
-            }
-
-            if (!foundAny) {
-                System.out.println("No categories found for seller " + sellerId);
             }
 
         } catch (SQLException e) {
@@ -314,7 +294,6 @@ public class ShopsQuickViewController {
     @FXML
     void handleProfileClick(ActionEvent event) {
         loadScene("/fxml/store/Profile.fxml", event);
-
     }
 
     @FXML
@@ -322,7 +301,6 @@ public class ShopsQuickViewController {
         loadScene("/fxml/store/Shops.fxml", event);
     }
 
-    // ✅ Shared helper for loading scenes
     private void loadScene(String fxmlPath, ActionEvent event) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));

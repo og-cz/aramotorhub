@@ -80,8 +80,8 @@ public class ProfileCategoryController implements Initializable {
         String query = """
                     SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                     FROM category c
-                    JOIN product p ON c.category_id = p.category_id
-                    WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                    LEFT JOIN product p ON c.category_id = p.category_id
+                        AND p.seller_id = ? AND p.status = 'AVAILABLE'
                     GROUP BY c.category_id, c.name
                     ORDER BY c.category_id ASC
                 """;
@@ -157,7 +157,7 @@ public class ProfileCategoryController implements Initializable {
                 FROM product p
                 JOIN category c ON p.category_id = c.category_id
                 JOIN user u ON p.seller_id = u.user_id
-                WHERE p.seller_id = ? AND c.name = ? AND p.status = 'AVAILABLE'
+                WHERE p.seller_id = ? AND TRIM(c.name) = TRIM(?) AND p.status = 'AVAILABLE'
                 ORDER BY p.created_at DESC
             """;
 
@@ -174,10 +174,10 @@ public class ProfileCategoryController implements Initializable {
         while (rs.next()) {
             Products product = new Products();
 
-         
+
             product.setProductId(rs.getInt("product_id"));
             product.setProductName(rs.getString("product_name"));
-            product.setProductPrice(String.valueOf(rs.getInt("price"))); 
+            product.setProductPrice(String.valueOf(rs.getInt("price")));
             product.setStoreName(rs.getString("first_name") + " " + rs.getString("last_name"));
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/store/ProductsContainer.fxml"));
@@ -266,6 +266,7 @@ public class ProfileCategoryController implements Initializable {
 
     @FXML
     void handleHomeButton(ActionEvent event) {
+        navigateTo("/fxml/store/Profile.fxml", event);
     }
 
     @FXML

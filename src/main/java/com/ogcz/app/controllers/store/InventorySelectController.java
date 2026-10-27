@@ -77,11 +77,8 @@ public class InventorySelectController implements Initializable {
     @FXML
     private Label labelCategoryItem8;
 
-
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-
         loadCategoryData();
     }
 
@@ -115,8 +112,8 @@ public class InventorySelectController implements Initializable {
         String query = """
                     SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                     FROM category c
-                    JOIN product p ON c.category_id = p.category_id
-                    WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                    LEFT JOIN product p ON c.category_id = p.category_id
+                        AND p.seller_id = ? AND p.status = 'AVAILABLE'
                     GROUP BY c.category_id, c.name
                     ORDER BY c.category_id ASC
                 """;
@@ -229,30 +226,6 @@ public class InventorySelectController implements Initializable {
 
     public void setSellerId(int sellerId) {
         this.sellerId = sellerId;
-        loadInventoryBySellerId(sellerId);
-    }
-
-    public void loadInventoryBySellerId(int sellerId) {
-        inventoryContainer.getChildren().clear();
-
-        List<Products> products = Products.getProductsBySellerId(sellerId);
-        for (Products product : products) {
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/store/InventoryRow.fxml"));
-                Node row = loader.load();
-
-                InventoryRowController controller = loader.getController();
-                controller.setProduct(product);
-
-                inventoryContainer.getChildren().add(row);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public void setCategory(String category) {
-        categoryComboBox.setValue(category);
     }
 
     public void loadProductsByCategory(String category) {

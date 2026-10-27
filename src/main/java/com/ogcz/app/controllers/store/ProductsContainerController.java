@@ -25,10 +25,10 @@ public class ProductsContainerController {
         productName.setText(product.getProductName());
         productPrice.setText(product.getProductPrice());
         storeName.setText(product.getStoreName()); // full name of seller
-    
+
     }
 
-  
+
 
     @FXML
     void addToCartHandle(ActionEvent event) {

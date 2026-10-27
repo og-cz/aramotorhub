@@ -23,8 +23,6 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 public class ProfileController implements Initializable {
-     @FXML void handleHomeButton(ActionEvent event) { }
-
 
     @FXML private Label firstLastNameLabel;
     @FXML private Label emailLabel;
@@ -86,8 +84,8 @@ public class ProfileController implements Initializable {
         String query = """
                 SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                 FROM category c
-                JOIN product p ON c.category_id = p.category_id
-                WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                LEFT JOIN product p ON c.category_id = p.category_id
+                    AND p.seller_id = ? AND p.status = 'AVAILABLE'
                 GROUP BY c.category_id, c.name
                 ORDER BY c.category_id ASC
                 """;
@@ -146,13 +144,12 @@ public class ProfileController implements Initializable {
     }
 
     private void openCategoryView(String categoryName) {
-        System.out.println("openCategoryView triggered");
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/store/ProfileCategory.fxml"));
             Parent root = loader.load();
 
             ProfileCategoryController controller = loader.getController();
-            controller.filterProductsByCategory(categoryName); 
+            controller.filterProductsByCategory(categoryName);
 
             Stage stage = (Stage) categoryComboBox.getScene().getWindow();
             stage.setScene(new Scene(root));
@@ -177,7 +174,8 @@ public class ProfileController implements Initializable {
     @FXML void handleInventoryClick(ActionEvent event) { loadScene(event, "/fxml/store/Inventory.fxml"); }
     @FXML void handleProductsClick(ActionEvent event) { loadScene(event, "/fxml/store/Products.fxml"); }
     @FXML void handleShopsClick(ActionEvent event) { loadScene(event, "/fxml/store/Shops.fxml"); }
-    @FXML void handleProfileClick(ActionEvent event) {loadScene(event,"/fxml/store/Profile.fxml");}
+    @FXML void handleProfileClick(ActionEvent event) { loadScene(event, "/fxml/store/Profile.fxml"); }
+    @FXML void handleHomeButton(ActionEvent event) { loadScene(event, "/fxml/store/Profile.fxml"); }
 
     @FXML void handleLogOutButton(ActionEvent event) {
         Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();

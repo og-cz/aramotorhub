@@ -41,10 +41,13 @@ public class DashboardRowController {
     @FXML
     private Label labelUserID;
 
-        private int orderId;
+    private int orderId;
+    private DashboardController dashboardController;
 
-        public void setDashboardController(DashboardController controller) {
+    public void setDashboardController(DashboardController controller) {
+        this.dashboardController = controller;
     }
+
     public void setData(String name, String address, String date, String quantity, String price, String status,
             int orderId) {
         labelName.setText(name);
@@ -55,7 +58,10 @@ public class DashboardRowController {
         labelStatus.setText(status);
         labelUserID.setText("" + orderId);
         this.orderId = orderId;
+        applyStatusColor(status);
+    }
 
+    private void applyStatusColor(String status) {
         switch (status.toUpperCase()) {
             case "COMPLETED":
                 labelStatus.setStyle("-fx-text-fill: #00C755;");
@@ -81,8 +87,18 @@ public class DashboardRowController {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response.getButtonData().isDefaultButton()) {
-                deleteOrderFromDatabase();
+                if (!deleteOrderFromDatabase()) {
+                    Alert failed = new Alert(Alert.AlertType.ERROR);
+                    failed.setTitle("ARA Motorhub");
+                    failed.setHeaderText(null);
+                    failed.setContentText("Could not delete the order. Please try again.");
+                    failed.showAndWait();
+                    return;
+                }
                 removeOrderFromUI();
+                if (dashboardController != null) {
+                    dashboardController.loadDashboardStats();
+                }
 
                 Alert success = new Alert(Alert.AlertType.INFORMATION);
                 success.setTitle("Order Deleted");
@@ -93,11 +109,12 @@ public class DashboardRowController {
         });
     }
 
-    private void deleteOrderFromDatabase() {
+    private boolean deleteOrderFromDatabase() {
         String deleteOrderItemsSQL = "DELETE FROM order_item WHERE order_id = ?";
         String deleteOrderSQL = "DELETE FROM `order` WHERE order_id = ?";
 
         try (Connection conn = DatabaseConnection.connect()) {
+            conn.setAutoCommit(false);
             try (PreparedStatement stmt1 = conn.prepareStatement(deleteOrderItemsSQL);
                     PreparedStatement stmt2 = conn.prepareStatement(deleteOrderSQL)) {
 
@@ -106,39 +123,36 @@ public class DashboardRowController {
 
                 stmt2.setInt(1, orderId);
                 stmt2.executeUpdate();
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
     private void removeOrderFromUI() {
-        Parent thisRow = labelName.getParent().getParent(); 
+        Parent thisRow = labelName.getParent().getParent();
         ((VBox) thisRow.getParent()).getChildren().remove(thisRow);
     }
 
-
     private void updateOrderStatus(String newStatus) {
-
-        switch (newStatus.toUpperCase()) {
-            case "COMPLETED":
-                labelStatus.setStyle("-fx-text-fill: #00C755;");
-                break;
-            case "PENDING":
-                labelStatus.setStyle("-fx-text-fill: #C70C00;");
-                break;
-            case "CANCELLED":
-                labelStatus.setStyle("-fx-text-fill: #D59700;");
-                break;
-        }
-
         String sql = "UPDATE `order` SET status = ? WHERE order_id = ?";
         try (Connection conn = DatabaseConnection.connect();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, newStatus);
             stmt.setInt(2, orderId);
             stmt.executeUpdate();
-            labelStatus.setText(newStatus); // reflect change in UI
+            labelStatus.setText(newStatus);
+            applyStatusColor(newStatus);
+            if (dashboardController != null) {
+                dashboardController.loadDashboardStats();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -158,5 +172,4 @@ public class DashboardRowController {
     void handleSetPending(ActionEvent event) {
         updateOrderStatus("PENDING");
     }
-
 }
