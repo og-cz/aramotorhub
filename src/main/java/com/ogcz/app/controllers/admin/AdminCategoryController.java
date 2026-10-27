@@ -13,7 +13,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import javafx.util.converter.DefaultStringConverter;
 
@@ -51,6 +50,14 @@ public class AdminCategoryController {
         categoryNameColumn.setOnEditCommit(event -> {
             Category category = event.getRowValue();
             category.setName(event.getNewValue());
+            categoryField.setText(event.getNewValue());
+        });
+
+        categoryTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            selectedCategory = newVal;
+            if (newVal != null) {
+                categoryField.setText(newVal.getName());
+            }
         });
 
         loadCategories();
@@ -97,6 +104,7 @@ public class AdminCategoryController {
 
         } catch (SQLException e) {
             e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Could not create the category.");
         }
     }
 
@@ -121,6 +129,7 @@ public class AdminCategoryController {
 
         } catch (SQLException e) {
             e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Could not delete the category, it still has products in it.");
         }
     }
 
@@ -131,11 +140,17 @@ public class AdminCategoryController {
             return;
         }
 
+        String name = categoryField.getText().trim();
+        if (name.isEmpty()) {
+            showAlert(Alert.AlertType.ERROR, "Validation Error", "Category name cannot be empty.");
+            return;
+        }
+
         String sql = "UPDATE category SET name = ? WHERE category_id = ?";
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, selectedCategory.getName());
+            pstmt.setString(1, name);
             pstmt.setInt(2, selectedCategory.getId());
             pstmt.executeUpdate();
             loadCategories();
@@ -145,14 +160,7 @@ public class AdminCategoryController {
 
         } catch (SQLException e) {
             e.printStackTrace();
-        }
-    }
-
-    @FXML
-    void handleSubmitButtonClick(MouseEvent event) {
-        selectedCategory = categoryTable.getSelectionModel().getSelectedItem();
-        if (selectedCategory != null) {
-            categoryField.setText(selectedCategory.getName());
+            showAlert(Alert.AlertType.ERROR, "Error", "Could not update the category.");
         }
     }
 
@@ -163,7 +171,6 @@ public class AdminCategoryController {
         alert.setContentText(message);
         alert.showAndWait();
     }
-
 
     @FXML
     void handleUser(ActionEvent e) {

@@ -100,7 +100,7 @@ public class AdminController {
 
     @FXML
     void handleCreate(ActionEvent event) {
-        String email = usernameTextField.getText();
+        String email = usernameTextField.getText().trim();
         String pass = passwordTextField.getText();
 
         if (email.isEmpty() || pass.isEmpty()) {
@@ -132,6 +132,12 @@ public class AdminController {
         User selected = userAdmin.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showAlert("ARA Motorhub", "Please select an admin to delete.");
+            return;
+        }
+
+        User current = UserSession.getCurrentUser();
+        if (current != null && current.getUserId() == selected.getUserId()) {
+            showAlert("ARA Motorhub", "You can't delete the account you're logged in with.");
             return;
         }
 
@@ -194,7 +200,6 @@ public class AdminController {
         SettingsWindowHelper.logout(currentStage);
     }
 
-    // Optional navigation stubs
     @FXML
     void handleUserClick(ActionEvent e) {
        switchScene(e, "/fxml/admin/AdminUsers.fxml");

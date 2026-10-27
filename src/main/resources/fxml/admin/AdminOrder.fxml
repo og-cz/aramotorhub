@@ -58,7 +58,7 @@
                                  <children>
                                     <VBox spacing="5.0">
                                        <children>
-                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleDelete" onMouseClicked="#handleSubmitButtonClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Delete" textFill="WHITE">
+                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleDelete" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Delete" textFill="WHITE">
                                              <font>
                                                 <Font name="Arial" size="10.69" />
                                              </font>

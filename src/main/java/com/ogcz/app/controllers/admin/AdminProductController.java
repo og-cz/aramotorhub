@@ -11,7 +11,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import javafx.util.converter.IntegerStringConverter;
 import javafx.event.ActionEvent;
@@ -94,7 +93,12 @@ public class AdminProductController {
         priceColumn.setCellFactory(TextFieldTableCell.forTableColumn());
         priceColumn.setOnEditCommit(e -> {
             Products p = e.getRowValue();
-            p.setProductPrice(e.getNewValue());
+            if (!e.getNewValue().trim().matches("\\d+")) {
+                showAlert(Alert.AlertType.ERROR, "Invalid Price", "Price must be a whole number.");
+                productsTable.refresh();
+                return;
+            }
+            p.setProductPrice(e.getNewValue().trim());
             updateProduct(p);
         });
 
@@ -108,7 +112,13 @@ public class AdminProductController {
         statusColumn.setCellFactory(TextFieldTableCell.forTableColumn());
         statusColumn.setOnEditCommit(e -> {
             Products p = e.getRowValue();
-            p.setStatus(e.getNewValue());
+            String status = e.getNewValue().trim().toUpperCase();
+            if (!status.equals("AVAILABLE") && !status.equals("OUT_OF_STOCK")) {
+                showAlert(Alert.AlertType.ERROR, "Invalid Status", "Status must be AVAILABLE or OUT_OF_STOCK.");
+                productsTable.refresh();
+                return;
+            }
+            p.setStatus(status);
             updateProduct(p);
         });
 
@@ -118,7 +128,7 @@ public class AdminProductController {
 
     private void setupStatusMenu() {
         MenuItem available = new MenuItem("AVAILABLE");
-        MenuItem unavailable = new MenuItem("UNAVAILABLE");
+        MenuItem unavailable = new MenuItem("OUT_OF_STOCK");
 
         available.setOnAction(e -> {
             selectedStatus = "AVAILABLE";
@@ -126,8 +136,8 @@ public class AdminProductController {
         });
 
         unavailable.setOnAction(e -> {
-            selectedStatus = "UNAVAILABLE";
-            statusMenuButton.setText("UNAVAILABLE");
+            selectedStatus = "OUT_OF_STOCK";
+            statusMenuButton.setText("OUT_OF_STOCK");
         });
 
         statusMenuButton.getItems().addAll(available, unavailable);
@@ -136,7 +146,7 @@ public class AdminProductController {
 
     private void loadProducts() {
         productsList.clear();
-        productsList.addAll(Products.getAllAvailableProducts());
+        productsList.addAll(Products.getAllProducts());
     }
 
     @FXML
@@ -152,34 +162,31 @@ public class AdminProductController {
             return;
         }
 
-        try {
-            int stock = Integer.parseInt(stockStr);
-            int sellerId = Integer.parseInt(sellerIdStr);
-
-            Connection conn = DatabaseConnection.connect();
-            String sql = "INSERT INTO product (name, description, price, stock, status, seller_id, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
+        String sql = "INSERT INTO product (name, description, price, stock, status, seller_id, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.connect();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            int priceValue = Integer.parseInt(price.trim());
+            int stock = Integer.parseInt(stockStr.trim());
+            int sellerId = Integer.parseInt(sellerIdStr.trim());
 
             stmt.setString(1, name);
             stmt.setString(2, description);
-            stmt.setString(3, price);
+            stmt.setInt(3, priceValue);
             stmt.setInt(4, stock);
             stmt.setString(5, selectedStatus);
             stmt.setInt(6, sellerId);
-            stmt.setInt(7, 8); // Update with dynamic category_id if needed
+            stmt.setInt(7, 8); // there's no category picker on this form yet
 
             stmt.executeUpdate();
-            stmt.close();
-            conn.close();
 
             showAlert(Alert.AlertType.INFORMATION, "Success", "Product created successfully.");
             loadProducts();
             clearFields();
         } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "Invalid Input", "Seller ID and stock must be integers.");
-        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Invalid Input", "Price, stock and seller ID must be whole numbers.");
+        } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to create product.");
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to create product. Check that the seller ID exists.");
         }
     }
 
@@ -191,20 +198,26 @@ public class AdminProductController {
             return;
         }
 
-        try {
-            Connection conn = DatabaseConnection.connect();
-            String sql = "DELETE FROM product WHERE product_id = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, selected.getProductId());
-            stmt.executeUpdate();
-            stmt.close();
-            conn.close();
+        try (Connection conn = DatabaseConnection.connect()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement cartStmt = conn.prepareStatement("DELETE FROM cart_item WHERE product_id = ?");
+                    PreparedStatement stmt = conn.prepareStatement("DELETE FROM product WHERE product_id = ?")) {
+                cartStmt.setInt(1, selected.getProductId());
+                cartStmt.executeUpdate();
+                stmt.setInt(1, selected.getProductId());
+                stmt.executeUpdate();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
 
             productsList.remove(selected);
             showAlert(Alert.AlertType.INFORMATION, "Deleted", "Product deleted successfully.");
-        } catch (Exception e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to delete product.");
+            showAlert(Alert.AlertType.ERROR, "Error",
+                    "Failed to delete product. It may already be part of an order, set it to OUT_OF_STOCK instead.");
         }
     }
 
@@ -220,13 +233,12 @@ public class AdminProductController {
     }
 
     private void updateProduct(Products p) {
-        try {
-            Connection conn = DatabaseConnection.connect();
-            String sql = """
-                    UPDATE product SET name = ?, description = ?, price = ?, stock = ?, status = ?
-                    WHERE product_id = ?
-                    """;
-            PreparedStatement stmt = conn.prepareStatement(sql);
+        String sql = """
+                UPDATE product SET name = ?, description = ?, price = ?, stock = ?, status = ?
+                WHERE product_id = ?
+                """;
+        try (Connection conn = DatabaseConnection.connect();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, p.getProductName());
             stmt.setString(2, p.getDescription());
             stmt.setString(3, p.getProductPrice());
@@ -235,8 +247,6 @@ public class AdminProductController {
             stmt.setInt(6, p.getProductId());
 
             stmt.executeUpdate();
-            stmt.close();
-            conn.close();
             productsTable.refresh();
 
             showAlert(Alert.AlertType.INFORMATION, "Updated", "Product updated successfully.");
@@ -264,7 +274,6 @@ public class AdminProductController {
         alert.showAndWait();
     }
 
-    // Optional navigation stubs
     @FXML
     void handleUser(ActionEvent e) {
        switchScene(e, "/fxml/admin/AdminUsers.fxml");
@@ -283,9 +292,8 @@ public class AdminProductController {
     @FXML
     void handleBack(ActionEvent e) {
           switchScene(e, "/fxml/admin/Admin.fxml");
-
     }
-   
+
 
     private void switchScene(ActionEvent event, String fxmlPath) {
         try {
@@ -297,10 +305,5 @@ public class AdminProductController {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @FXML
-    void handleSubmitButtonClick(MouseEvent event) {
-        // You can implement this if you add a separate form submit
     }
 }

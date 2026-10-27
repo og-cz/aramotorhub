@@ -147,17 +147,17 @@
                                     <Region layoutX="10.0" layoutY="165.0" maxHeight="66.0" maxWidth="208.0" minHeight="10.0" minWidth="208.0" prefHeight="31.0" prefWidth="208.0" />
                                     <VBox spacing="5.0">
                                        <children>
-                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleCreateClick" onMouseClicked="#handleSubmitButtonClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Create" textFill="WHITE">
+                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleCreateClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Create" textFill="WHITE">
                                              <font>
                                                 <Font name="Arial" size="10.69" />
                                              </font>
                                           </Button>
-                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleUpdateClick" onMouseClicked="#handleSubmitButtonClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Update" textFill="WHITE">
+                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleUpdateClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Update" textFill="WHITE">
                                              <font>
                                                 <Font name="Arial" size="10.69" />
                                              </font>
                                           </Button>
-                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleDeleteClick" onMouseClicked="#handleSubmitButtonClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Delete" textFill="WHITE">
+                                          <Button alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#handleDeleteClick" prefHeight="22.0" prefWidth="208.0" style="-fx-background-color: B7B710; -fx-background-radius: 5;" text="Delete" textFill="WHITE">
                                              <font>
                                                 <Font name="Arial" size="10.69" />
                                              </font>

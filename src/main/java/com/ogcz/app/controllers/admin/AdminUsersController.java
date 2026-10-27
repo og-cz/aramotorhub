@@ -2,6 +2,7 @@ package com.ogcz.app.controllers.admin;
 
 import com.ogcz.app.database.DatabaseConnection;
 import com.ogcz.app.database.User;
+import com.ogcz.app.database.UserService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -13,7 +14,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -150,15 +150,6 @@ public class AdminUsersController {
         });
     }
 
-    @FXML
-    void handleTableClick(MouseEvent event) {
-        if (customerTable.getSelectionModel().getSelectedItem() != null) {
-            selectedUser = customerTable.getSelectionModel().getSelectedItem();
-        } else if (sellerTable.getSelectionModel().getSelectedItem() != null) {
-            selectedUser = sellerTable.getSelectionModel().getSelectedItem();
-        }
-    }
-
     private void populateFieldsFromSelectedUser() {
         if (selectedUser != null) {
             emailField.setText(selectedUser.getEmail());
@@ -202,8 +193,26 @@ public class AdminUsersController {
         }
     }
 
+    private boolean fieldsAreValid() {
+        if (emailField.getText().isBlank() || passwordField.getText().isBlank()
+                || firstNameField.getText().isBlank() || lastNameField.getText().isBlank()) {
+            showAlert("Warning", "Please fill in the email, password and name.");
+            return false;
+        }
+        String role = roleFieldMenu.getText();
+        if (!role.equalsIgnoreCase("CUSTOMER") && !role.equalsIgnoreCase("SELLER")) {
+            showAlert("Warning", "Please pick a role.");
+            return false;
+        }
+        return true;
+    }
+
     @FXML
     void handleCreate(ActionEvent event) {
+        if (!fieldsAreValid()) {
+            return;
+        }
+
         try (Connection conn = DatabaseConnection.connect();
                 PreparedStatement stmt = conn.prepareStatement(
                         "INSERT INTO user (email, password, first_name, last_name, address, district, barangay, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -235,15 +244,12 @@ public class AdminUsersController {
             return;
         }
 
-        try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement stmt = conn.prepareStatement("DELETE FROM user WHERE user_id = ?")) {
-            stmt.setInt(1, selectedUser.getUserId());
-            stmt.executeUpdate();
+        if (new UserService().deleteUser(selectedUser.getUserId())) {
             loadUsers();
             clearFields();
             showAlert("Success", "User deleted successfully.");
-        } catch (SQLException e) {
-            showAlert("Error", "Could not delete user: " + e.getMessage());
+        } else {
+            showAlert("Error", "Could not delete user.");
         }
     }
 
@@ -251,6 +257,9 @@ public class AdminUsersController {
     void handleUpdate(ActionEvent event) {
         if (selectedUser == null) {
             showAlert("Warning", "Please select a user to update.");
+            return;
+        }
+        if (!fieldsAreValid()) {
             return;
         }
 
@@ -279,11 +288,6 @@ public class AdminUsersController {
     }
 
     @FXML
-    public void handleSubmitButtonClick(MouseEvent e) {
-        handleCreate(new ActionEvent());
-    }
-
-    @FXML
     public void handleProductsClick(ActionEvent e) {
         switchScene(e, "/fxml/admin/AdminProduct.fxml");
     }
@@ -300,11 +304,10 @@ public class AdminUsersController {
 
     @FXML
     public void handleBackClick(ActionEvent e) {
-        System.out.println("handleBackClick");
         switchScene(e, "/fxml/admin/Admin.fxml");
     }
 
-        private void switchScene(ActionEvent event, String fxmlPath) {
+    private void switchScene(ActionEvent event, String fxmlPath) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             Parent newRoot = loader.load();

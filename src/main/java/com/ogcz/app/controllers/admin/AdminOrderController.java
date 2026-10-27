@@ -12,7 +12,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -41,15 +40,7 @@ public class AdminOrderController {
     @FXML
     private TableView<Order> orderTable;
 
-    @FXML
-    private TextField addressField;
-
-    @FXML
-    private TextField statusField;
-
     private ObservableList<Order> orderList = FXCollections.observableArrayList();
-
-    private int selectedOrderId = -1;
 
     @FXML
     public void initialize() {
@@ -89,16 +80,6 @@ public class AdminOrderController {
     }
 
     @FXML
-    void handleSubmitButtonClick(MouseEvent event) {
-        Order selectedOrder = orderTable.getSelectionModel().getSelectedItem();
-        if (selectedOrder != null) {
-            addressField.setText(selectedOrder.getAddress());
-            statusField.setText(selectedOrder.getStatus());
-            selectedOrderId = selectedOrder.getOrderId();
-        }
-    }
-
-    @FXML
     void handleDelete(ActionEvent event) {
         Order selectedOrder = orderTable.getSelectionModel().getSelectedItem();
         if (selectedOrder == null) {
@@ -106,57 +87,25 @@ public class AdminOrderController {
             return;
         }
 
-        String sql = "DELETE FROM `order` WHERE order_id = ?";
-        try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, selectedOrder.getOrderId());
-            pstmt.executeUpdate();
+        try (Connection conn = DatabaseConnection.connect()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement itemsStmt = conn.prepareStatement("DELETE FROM order_item WHERE order_id = ?");
+                    PreparedStatement pstmt = conn.prepareStatement("DELETE FROM `order` WHERE order_id = ?")) {
+                itemsStmt.setInt(1, selectedOrder.getOrderId());
+                itemsStmt.executeUpdate();
+                pstmt.setInt(1, selectedOrder.getOrderId());
+                pstmt.executeUpdate();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
             showAlert(Alert.AlertType.INFORMATION, "Deleted", "Order deleted successfully.");
             loadOrders();
-            addressField.clear();
-            statusField.clear();
-            selectedOrderId = -1;
 
         } catch (SQLException e) {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Database Error", "Unable to delete the order.");
-        }
-    }
-
-    @FXML
-    void handleUpdate(ActionEvent event) {
-        if (selectedOrderId == -1) {
-            showAlert(Alert.AlertType.WARNING, "Selection Error", "Please select an order to update.");
-            return;
-        }
-
-        String newAddress = addressField.getText().trim();
-        String newStatus = statusField.getText().trim();
-
-        if (newAddress.isEmpty() || newStatus.isEmpty()) {
-            showAlert(Alert.AlertType.ERROR, "Validation Error", "Address and Status cannot be empty.");
-            return;
-        }
-
-        String sql = "UPDATE `order` SET address = ?, status = ? WHERE order_id = ?";
-        try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newAddress);
-            pstmt.setString(2, newStatus);
-            pstmt.setInt(3, selectedOrderId);
-            pstmt.executeUpdate();
-
-            showAlert(Alert.AlertType.INFORMATION, "Success", "Order updated successfully.");
-            loadOrders();
-            addressField.clear();
-            statusField.clear();
-            selectedOrderId = -1;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Database Error", "Unable to update the order.");
         }
     }
 
@@ -181,13 +130,11 @@ public class AdminOrderController {
     @FXML
     void handleProduct(ActionEvent e) {
         switchScene(e, "/fxml/admin/AdminProduct.fxml");
-
     }
 
     @FXML
     void handleUser(ActionEvent e) {
         switchScene(e, "/fxml/admin/AdminUsers.fxml");
-
     }
 
     private void switchScene(ActionEvent event, String fxmlPath) {
