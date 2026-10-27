@@ -6,8 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import com.ogcz.app.SettingsWindowHelper;
+import com.ogcz.app.database.CartService;
 import com.ogcz.app.database.DatabaseConnection;
 import com.ogcz.app.database.UserSession;
 import com.ogcz.app.database.User;
@@ -46,90 +49,102 @@ public class CartController {
 
         int customerId = currentUser.getUserId();
         String address = currentUser.getAddress();
-        double totalPriceValue = totalPrice;
 
         try (Connection conn = DatabaseConnection.connect()) {
             conn.setAutoCommit(false);
 
-            // get cart_id
-            int cartId = -1;
-            try (PreparedStatement stmt = conn.prepareStatement("SELECT cart_id FROM cart WHERE customer_id = ?")) {
-                stmt.setInt(1, customerId);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    cartId = rs.getInt("cart_id");
-                } else {
-                    showAlert(Alert.AlertType.ERROR, "Error", "No cart found.");
+            try {
+                int cartId = CartService.getOrCreateCartId(conn, customerId);
+
+                // lock the products so two checkouts can't oversell the same stock
+                String cartItemsSql = """
+                            SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock, p.status
+                            FROM cart_item ci
+                            JOIN product p ON ci.product_id = p.product_id
+                            WHERE ci.cart_id = ?
+                            FOR UPDATE
+                        """;
+
+                List<int[]> items = new ArrayList<>(); // product_id, quantity, price
+                double total = 0;
+
+                try (PreparedStatement stmt = conn.prepareStatement(cartItemsSql)) {
+                    stmt.setInt(1, cartId);
+                    ResultSet rs = stmt.executeQuery();
+                    while (rs.next()) {
+                        int quantity = rs.getInt("quantity");
+                        int stock = rs.getInt("stock");
+
+                        if (!"AVAILABLE".equalsIgnoreCase(rs.getString("status")) || quantity > stock) {
+                            conn.rollback();
+                            showAlert(Alert.AlertType.WARNING, "ARA Motorhub",
+                                    rs.getString("name") + " only has " + Math.max(stock, 0)
+                                            + " left in stock. Please update your cart.");
+                            return;
+                        }
+
+                        items.add(new int[] { rs.getInt("product_id"), quantity, rs.getInt("price") });
+                        total += (double) rs.getInt("price") * quantity;
+                    }
+                }
+
+                if (items.isEmpty()) {
+                    conn.rollback();
+                    showAlert(Alert.AlertType.WARNING, "ARA Motorhub", "Your cart is empty. Add items before checking out.");
                     return;
                 }
-            }
 
-            // check if cart is empty
-            int cartItemCount = 0;
-            try (PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM cart_item WHERE cart_id = ?")) {
-                stmt.setInt(1, cartId);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    cartItemCount = rs.getInt(1);
+                String insertOrderSQL = "INSERT INTO `order` (customer_id, address, total_price, status) VALUES (?, ?, ?, 'PENDING')";
+                int orderId;
+                try (PreparedStatement stmt = conn.prepareStatement(insertOrderSQL,
+                        PreparedStatement.RETURN_GENERATED_KEYS)) {
+                    stmt.setInt(1, customerId);
+                    stmt.setString(2, address);
+                    stmt.setDouble(3, total);
+                    stmt.executeUpdate();
+
+                    ResultSet generatedKeys = stmt.getGeneratedKeys();
+                    if (!generatedKeys.next()) {
+                        throw new SQLException("Creating order failed, no ID obtained.");
+                    }
+                    orderId = generatedKeys.getInt(1);
                 }
-            }
 
-            if (cartItemCount == 0) {
-                showAlert(Alert.AlertType.WARNING, "ARA Motorhub", "Your cart is empty. Add items before checking out.");
-                return;
-            }
-
-            // insert into `order`
-            String insertOrderSQL = "INSERT INTO `order` (customer_id, address, total_price, status, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
-            int generatedOrderId = -1;
-            try (PreparedStatement stmt = conn.prepareStatement(insertOrderSQL,
-                    PreparedStatement.RETURN_GENERATED_KEYS)) {
-                stmt.setInt(1, customerId);
-                stmt.setString(2, address);
-                stmt.setDouble(3, totalPriceValue);
-                stmt.setString(4, "PENDING");
-                stmt.executeUpdate();
-
-                ResultSet generatedKeys = stmt.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    generatedOrderId = generatedKeys.getInt(1);
-                } else {
-                    throw new SQLException("Creating order failed, no ID obtained.");
-                }
-            }
-
-            // Insert order items
-            String getCartItemsSQL = """
-                        SELECT product_id, quantity,
-                               (SELECT price FROM product WHERE product.product_id = cart_item.product_id) AS price
-                        FROM cart_item WHERE cart_id = ?
-                    """;
-            try (PreparedStatement stmt = conn.prepareStatement(getCartItemsSQL)) {
-                stmt.setInt(1, cartId);
-                ResultSet rs = stmt.executeQuery();
-
-                String insertOrderItemSQL = "INSERT INTO order_item (order_id, product_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?)";
-                try (PreparedStatement itemStmt = conn.prepareStatement(insertOrderItemSQL)) {
-                    while (rs.next()) {
-                        itemStmt.setInt(1, generatedOrderId);
-                        itemStmt.setInt(2, rs.getInt("product_id"));
-                        itemStmt.setInt(3, rs.getInt("quantity"));
-                        itemStmt.setDouble(4, rs.getDouble("price"));
+                String insertItemSQL = "INSERT INTO order_item (order_id, product_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?)";
+                String updateStockSQL = """
+                            UPDATE product
+                            SET stock = stock - ?,
+                                status = IF(stock <= 0, 'OUT_OF_STOCK', status)
+                            WHERE product_id = ?
+                        """;
+                try (PreparedStatement itemStmt = conn.prepareStatement(insertItemSQL);
+                        PreparedStatement stockStmt = conn.prepareStatement(updateStockSQL)) {
+                    for (int[] item : items) {
+                        itemStmt.setInt(1, orderId);
+                        itemStmt.setInt(2, item[0]);
+                        itemStmt.setInt(3, item[1]);
+                        itemStmt.setDouble(4, item[2]);
                         itemStmt.addBatch();
+
+                        stockStmt.setInt(1, item[1]);
+                        stockStmt.setInt(2, item[0]);
+                        stockStmt.addBatch();
                     }
                     itemStmt.executeBatch();
+                    stockStmt.executeBatch();
                 }
+
+                try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM cart_item WHERE cart_id = ?")) {
+                    stmt.setInt(1, cartId);
+                    stmt.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
 
-            // clear cart
-            try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM cart_item WHERE cart_id = ?")) {
-                stmt.setInt(1, cartId);
-                stmt.executeUpdate();
-            }
-
-            conn.commit();
-
-            // reset UI
             vboxCartProducts.getChildren().clear();
             totalPrice = 0;
             labelTotalPrice.setText("0.00");
@@ -208,25 +223,14 @@ public class CartController {
         int userId = currentUser.getUserId();
 
         try (Connection conn = DatabaseConnection.connect()) {
-            int cartId = -1;
-            String cartQuery = "SELECT cart_id FROM cart WHERE customer_id = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(cartQuery)) {
-                stmt.setInt(1, userId);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    cartId = rs.getInt("cart_id");
-                } else {
-                    System.out.println("No cart found for user ID: " + userId);
-                    return;
-                }
-            }
+            int cartId = CartService.getOrCreateCartId(conn, userId);
 
             String sql = """
                         SELECT p.product_id, p.name AS product_name, p.price,
                                u.first_name AS store_first_name,
                                u.last_name AS store_last_name,
                                u.address AS store_address,
-                               ci.quantity
+                               ci.quantity, p.stock
                         FROM cart_item ci
                         JOIN product p ON ci.product_id = p.product_id
                         JOIN user u ON p.seller_id = u.user_id
@@ -249,8 +253,9 @@ public class CartController {
 
                     String storeAddress = rs.getString("store_address");
                     int quantity = rs.getInt("quantity");
+                    int stock = rs.getInt("stock");
 
-                    addCartItem(productName, initials, price, storeName, storeAddress, quantity, productId, cartId);
+                    addCartItem(productName, initials, price, storeName, storeAddress, quantity, stock, productId, cartId);
                 }
 
                 recalculateTotalPrice();
@@ -312,14 +317,14 @@ public class CartController {
     }
 
     private void addCartItem(String productName, String initials, String price, String storeName, String storeAddress,
-                             int quantity, int productId, int cartId) {
+                             int quantity, int stock, int productId, int cartId) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/customer/CartProductContainer.fxml"));
             Node node = loader.load();
 
             CartProductContainerController controller = loader.getController();
             controller.setProductDetails(productName, initials, price, storeName, storeAddress, quantity,
-                    productId, cartId, this::recalculateTotalPrice);
+                    stock, productId, cartId, this::recalculateTotalPrice);
 
             node.setUserData(loader);
             vboxCartProducts.getChildren().add(node);

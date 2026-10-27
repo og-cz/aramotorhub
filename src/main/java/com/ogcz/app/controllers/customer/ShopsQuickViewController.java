@@ -84,10 +84,8 @@ public class ShopsQuickViewController implements Initializable {
     public void setShopDetails(Shops shop) {
 
         if (shop == null) {
-            System.err.println("ERROR: Shop passed to setShopDetails is null!");
             return;
         }
-        System.out.println("Received shop ID: " + shop.getShopId());
 
         this.shop = shop;
 
@@ -181,8 +179,8 @@ public class ShopsQuickViewController implements Initializable {
         String query = """
                     SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                     FROM category c
-                    JOIN product p ON c.category_id = p.category_id
-                    WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                    LEFT JOIN product p ON c.category_id = p.category_id
+                        AND p.seller_id = ? AND p.status = 'AVAILABLE'
                     GROUP BY c.category_id, c.name
                     ORDER BY c.category_id ASC
                 """;

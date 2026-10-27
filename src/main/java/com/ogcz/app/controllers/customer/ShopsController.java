@@ -33,9 +33,6 @@ public class ShopsController implements Initializable {
 
     private List<Shops> nearestShop;
 
-    public void setShop(Shops shop) {
-    }
-
     private void openCategoriesPage(String category) {
         System.out.println("Opening category: " + category);
         try {
@@ -128,8 +125,6 @@ public class ShopsController implements Initializable {
                 shop.setShopEmail(rs.getString("email"));
                 shop.setShopAddress(rs.getString("address"));
                 shop.setShopBarangay(rs.getString("barangay"));
-
-                // No more distance calculation – just display barangay directly
                 shop.setShopDistance(rs.getString("barangay"));
 
                 shopsList.add(shop);

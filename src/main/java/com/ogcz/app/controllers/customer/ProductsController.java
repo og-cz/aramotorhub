@@ -5,8 +5,8 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.*;
+import java.util.List;
+import java.util.ResourceBundle;
 
 import com.ogcz.app.SettingsWindowHelper;
 import com.ogcz.app.database.DatabaseConnection;
@@ -28,14 +28,12 @@ import javafx.stage.Stage;
 
 public class ProductsController implements Initializable {
 
-    
-    @FXML
+        @FXML
     private GridPane productsContainer;
 
     @FXML
     private ComboBox<String> categoryComboBox;
 
-    @FXML
     private List<Products> showProducts;
 
     private static final int TOTAL_WIDTH = 715;
@@ -64,7 +62,7 @@ public class ProductsController implements Initializable {
             }
         });
 
-        showProducts = getAllAvailableProducts();
+        showProducts = Products.getAllAvailableProducts();
 
         productsContainer.getColumnConstraints().clear();
         for (int i = 0; i < COLUMN_COUNT; i++) {
@@ -122,43 +120,6 @@ public class ProductsController implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public List<Products> getAllAvailableProducts() {
-        List<Products> productsList = new ArrayList<>();
-        String sql = "SELECT DISTINCT p.product_id, p.name, p.price, p.seller_id, u.first_name, u.last_name " +
-                "FROM product p " +
-                "JOIN user u ON p.seller_id = u.user_id " +
-                "WHERE p.status = 'AVAILABLE' " +
-                "ORDER BY p.name ASC";
-
-        Set<String> productNamesSet = new HashSet<>();
-
-        try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement stmt = conn.prepareStatement(sql);
-                ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                String productName = rs.getString("name");
-                if (!productNamesSet.contains(productName)) {
-                    productNamesSet.add(productName);
-
-                    Products p = new Products();
-                    p.setProductId(rs.getInt("product_id"));
-                    p.setProductName(productName);
-                    p.setProductPrice(rs.getString("price"));
-                    String sellerName = rs.getString("first_name") + " " + rs.getString("last_name");
-                    p.setStoreName(sellerName.trim());
-                    p.setSellerId(rs.getInt("seller_id"));
-                    productsList.add(p);
-                }
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return productsList;
     }
 
     @FXML

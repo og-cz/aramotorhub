@@ -1,18 +1,10 @@
 package com.ogcz.app.controllers.customer;
 
-import java.io.IOException;
-
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.stage.Stage;
 
 public class CartProductContainerController {
 
@@ -56,7 +48,7 @@ public class CartProductContainerController {
     }
 
     public void setProductDetails(String name, String initials, String price, String storeName, String storeAddress,
-            int quantity, int productId, int cartId, Runnable onQuantityChangeCallback) {
+            int quantity, int stock, int productId, int cartId, Runnable onQuantityChangeCallback) {
         labelProductName.setText(name);
         labelProductInitials.setText(initials);
         labelPrice.setText(price);
@@ -68,7 +60,9 @@ public class CartProductContainerController {
         this.productId = productId;
         this.cartId = cartId;
 
-        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 1000,
+        // can't order more than what's in stock (stock may have dropped since it was added)
+        int max = Math.max(stock, quantity);
+        SpinnerValueFactory<Integer> valueFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, max,
                 quantity);
         spinnerProductAmount.setValueFactory(valueFactory);
 
@@ -114,23 +108,6 @@ public class CartProductContainerController {
             stmt.setInt(2, productId);
             stmt.executeUpdate();
         } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-        @FXML
-    private void handleProfileClick(ActionEvent event) {
-        System.out.println("handleProfileClick triggered");
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/customer/Profile.fxml"));
-            Parent newRoot = loader.load();
-
-            Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            Scene newScene = new Scene(newRoot);
-            currentStage.setScene(newScene);
-            currentStage.show();
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }

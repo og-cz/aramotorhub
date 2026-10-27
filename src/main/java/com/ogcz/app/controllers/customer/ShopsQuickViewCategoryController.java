@@ -11,13 +11,11 @@ import com.ogcz.app.SettingsWindowHelper;
 import com.ogcz.app.database.DatabaseConnection;
 import com.ogcz.app.database.Products;
 import com.ogcz.app.database.Shops;
-import com.ogcz.app.controllers.customer.ShopsQuickViewCategoryController;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -91,7 +89,7 @@ public class ShopsQuickViewCategoryController implements Initializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    
+
     }
 
     public void setShopDetails(Shops shop) {
@@ -109,11 +107,11 @@ public class ShopsQuickViewCategoryController implements Initializable {
         }
 
         String query = """
-                    SELECT p.*, u.first_name || ' ' || u.last_name AS store_name
+                    SELECT p.*
                     FROM product p
                     JOIN category c ON p.category_id = c.category_id
                     JOIN user u ON p.seller_id = u.user_id
-                    WHERE p.seller_id = ? AND c.name = ? AND p.status = 'AVAILABLE'
+                    WHERE p.seller_id = ? AND TRIM(c.name) = TRIM(?) AND p.status = 'AVAILABLE'
                     ORDER BY p.product_id
                 """;
 
@@ -144,8 +142,9 @@ public class ShopsQuickViewCategoryController implements Initializable {
                 product.setProductId(rs.getInt("product_id"));
                 product.setProductName(rs.getString("name"));
                 product.setProductPrice("" + rs.getDouble("price"));
+                product.setStock(rs.getInt("stock"));
+                product.setSellerId(rs.getInt("seller_id"));
                 product.setStoreName(sellerName.getText());
-                System.out.println(sellerName.getText());
 
                 FXMLLoader loader = new FXMLLoader(
                         getClass().getResource("/fxml/customer/ProductsContainer.fxml"));
@@ -159,7 +158,6 @@ public class ShopsQuickViewCategoryController implements Initializable {
                 controller.setData(product);
 
                 gridPane.add(productBox, column++, row);
-                GridPane.setMargin(productBox, new Insets(0));
 
                 if (column == COLUMN_COUNT) {
                     column = 0;
@@ -176,13 +174,13 @@ public class ShopsQuickViewCategoryController implements Initializable {
         String query = """
                 SELECT c.name AS category_name, COUNT(p.product_id) AS product_count
                 FROM category c
-                JOIN product p ON c.category_id = p.category_id
-                WHERE p.seller_id = ? AND p.status = 'AVAILABLE'
+                LEFT JOIN product p ON c.category_id = p.category_id
+                    AND p.seller_id = ? AND p.status = 'AVAILABLE'
                 GROUP BY c.category_id, c.name
                 ORDER BY c.category_id ASC
                 """;
 
-        try (Connection conn = com.ogcz.app.database.DatabaseConnection.connect();
+        try (Connection conn = DatabaseConnection.connect();
                 PreparedStatement stmt = conn.prepareStatement(query)) {
 
             stmt.setInt(1, sellerId);
@@ -234,7 +232,7 @@ public class ShopsQuickViewCategoryController implements Initializable {
         }
     }
 
-    
+
 
     @FXML
     void handleBackToShop(ActionEvent event) {

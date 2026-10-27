@@ -127,7 +127,7 @@ public class FavoriteController {
         }
     }
 
-    @FXML 
+    @FXML
     void handleCartClick(ActionEvent event) {
         System.out.println("handleCartClick triggered");
         try {
@@ -140,7 +140,7 @@ public class FavoriteController {
             currentStage.show();
         } catch (IOException e) {
             e.printStackTrace();
-        }        
+        }
     }
 
     @FXML

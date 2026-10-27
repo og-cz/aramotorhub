@@ -28,27 +28,12 @@ public class ShopsCardLayoutController {
 
     public void setData(Shops shop) {
         this.currentShop = shop;
-        System.out.println("SetData called with shop: " + shop.getShopName()); 
         shopName.setText(shop.getShopName());
         shopDistance.setText(shop.getShopDistance());
     }
 
     @FXML
-    public void initialize() {
-        System.out.println("ShopsCardLayoutController initialized");
-        if (quickViewButton == null) {
-            System.out.println("quickViewButton is null!");
-        } else {
-            System.out.println("quickViewButton is NOT null!");
-            quickViewButton.setOnAction(event -> {
-                handleQuickView(event);
-            });
-        }
-    }
-
-    @FXML
     void handleQuickView(ActionEvent event) {
-        System.out.println("handleQuickView triggered");
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/customer/ShopsQuickView.fxml"));
             Parent root = loader.load();

@@ -46,7 +46,7 @@
       </VBox>
       <VBox alignment="CENTER_RIGHT" prefHeight="126.0" prefWidth="139.0" HBox.hgrow="ALWAYS">
          <children>
-            <Button fx:id="quickViewButton" alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" prefHeight="26.0" prefWidth="98.0" style="-fx-background-color: black; -fx-background-radius: 0;" text="Quick view" textFill="WHITE" VBox.vgrow="ALWAYS">
+            <Button fx:id="quickViewButton" alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#handleQuickView" prefHeight="26.0" prefWidth="98.0" style="-fx-background-color: black; -fx-background-radius: 0;" text="Quick view" textFill="WHITE" VBox.vgrow="ALWAYS">
                <font>
                   <Font name="Arial Bold" size="10.0" />
                </font>

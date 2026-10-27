@@ -70,26 +70,6 @@ public class HomeMainController implements Initializable {
         }
     }
 
-    @FXML
-    void handleCategoryClick(ActionEvent event) {
-        String categoryName = "Helmets"; // Or get this from button text or id
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/customer/Categories.fxml"));
-            Parent root = loader.load();
-
-            CategoriesController controller = loader.getController();
-            controller.setSelectedCategory(categoryName); // 🚨 REQUIRED
-
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(new Scene(root));
-            stage.show();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         categoryComboBox.setPromptText("Category");

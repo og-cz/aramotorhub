@@ -152,7 +152,7 @@ public class CategoriesController implements Initializable {
 
     @FXML
     void handleFavoriteClick(ActionEvent event) {
-        navigateTo(event, "/fxml/customer/Favorites.fxml");
+        navigateTo(event, "/fxml/customer/Favorite.fxml");
     }
 
     @FXML
