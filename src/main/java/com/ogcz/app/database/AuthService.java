@@ -56,7 +56,8 @@ public class AuthService {
 
             ResultSet rs = stmt.executeQuery();
 
-            if (rs.next()) {
+            // mysql compares strings case-insensitively, so check the password again here
+            if (rs.next() && rs.getString("password").equals(password)) {
                 int dbUserId = rs.getInt("user_id");
                 String dbEmail = rs.getString("email");
                 String dbPassword = rs.getString("password");
@@ -79,29 +80,28 @@ public class AuthService {
         return user;
     }
 
-    public boolean Submit(boolean value) {
+    public boolean emailExists(String email) {
+        String sql = "SELECT 1 FROM user WHERE email = ?";
 
-        return value == true;
-    }
+        try (Connection conn = DatabaseConnection.connect();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-    public void showNewUser() {
-        System.out.println("---- New User Created ----");
-        System.out.println("First Name: " + firstName);
-        System.out.println("Last Name: " + lastName);
-        System.out.println("Email: " + email);
-        System.out.println("Password: " + password);
-        System.out.println("Address: " + address);
-        System.out.println("District: " + district);
-        System.out.println("Barangay: " + barangay);
-        System.out.println("Role: " + role);
-        System.out.println("--------------------------------");
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public String registerNewUser() {
         String generatedUserId = null;
 
         String sql = "INSERT INTO user (email, password, first_name, last_name, address, district, barangay, role)"
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.connect();
                 PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -134,7 +134,7 @@ public class AuthService {
             e.printStackTrace();
         }
 
-        return generatedUserId; 
+        return generatedUserId;
     }
 
     private String getRoleSuffix(String role) {
@@ -149,7 +149,4 @@ public class AuthService {
                 return "";
         }
     }
-
-
-
 }

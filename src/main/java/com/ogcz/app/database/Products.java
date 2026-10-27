@@ -22,7 +22,6 @@ public class Products {
     private String storeAddress;
     private String storeBarangay;
 
-    // constructor used in getProductsBySellerIdAndCategory
     public Products(int productId, int sellerId, int categoryId, String productName,
             String description, double price, int stock, String status, Timestamp createdAt) {
         this.productId = productId;
@@ -160,7 +159,7 @@ public class Products {
                     SELECT p.*
                     FROM product p
                     JOIN category c ON p.category_id = c.category_id
-                    WHERE p.seller_id = ? AND c.name = ?
+                    WHERE p.seller_id = ? AND TRIM(c.name) = TRIM(?)
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
@@ -189,37 +188,6 @@ public class Products {
         }
 
         return products;
-    }
-
-    public static List<Products> getProductsBySellerAndCategory(int sellerId, int categoryId) {
-        List<Products> productList = new ArrayList<>();
-        String sql = "SELECT * FROM product WHERE seller_id = ? AND category_id = ? AND status = 'AVAILABLE'";
-
-        try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, sellerId);
-            stmt.setInt(2, categoryId);
-
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                Products product = new Products();
-                product.setProductId(rs.getInt("product_id"));
-                product.setProductName(rs.getString("name"));
-                product.setDescription(rs.getString("description"));
-                product.setProductPrice(String.valueOf(rs.getDouble("price")));
-                product.setStock(rs.getInt("stock"));
-                product.setStatus(rs.getString("status"));
-                product.setCategoryId(rs.getInt("category_id"));
-                product.setSellerId(rs.getInt("seller_id"));
-                productList.add(product);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return productList;
     }
 
     public static List<Products> getProductsBySellerId(int sellerId) {
@@ -288,7 +256,7 @@ public class Products {
                     FROM product p
                     JOIN category c ON p.category_id = c.category_id
                     JOIN user u ON p.seller_id = u.user_id
-                    WHERE c.name = ? AND p.status = 'AVAILABLE'
+                    WHERE TRIM(c.name) = TRIM(?) AND p.status = 'AVAILABLE'
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
@@ -323,46 +291,34 @@ public class Products {
         return productsList;
     }
 
-    public static List<Products> getProductsByCategory(String category, int limit) {
-        List<Products> list = new ArrayList<>();
-        String sql = """
-                    SELECT
-                        p.product_id,
-                        p.name AS product_name,
-                        p.price,
-                        u.first_name,
-                        u.last_name
-                    FROM product p
-                    JOIN user u ON p.seller_id = u.user_id
-                    JOIN category c ON p.category_id = c.category_id
-                    WHERE c.name = ?
-                    ORDER BY p.name ASC
-                    LIMIT ?
-                """;
+    // admin needs every product (not just available ones) and the description,
+    // otherwise saving a row wipes the description
+    public static List<Products> getAllProducts() {
+        List<Products> productList = new ArrayList<>();
+        String sql = "SELECT * FROM product ORDER BY product_id ASC";
 
         try (Connection conn = DatabaseConnection.connect();
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
 
-            stmt.setString(1, category);
-            stmt.setInt(2, limit);
-
-            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                Products p = new Products();
-                p.setProductId(rs.getInt("product_id"));
-                p.setProductName(rs.getString("product_name"));
-                p.setProductPrice(rs.getString("price"));
-
-                String storeName = rs.getString("first_name") + " " + rs.getString("last_name");
-                p.setStoreName(storeName);
-                list.add(p);
+                productList.add(new Products(
+                        rs.getInt("product_id"),
+                        rs.getInt("seller_id"),
+                        rs.getInt("category_id"),
+                        rs.getString("name"),
+                        rs.getString("description"),
+                        rs.getDouble("price"),
+                        rs.getInt("stock"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at")));
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
-        return list;
+        return productList;
     }
 
     public static List<Products> getAllAvailableProducts() {

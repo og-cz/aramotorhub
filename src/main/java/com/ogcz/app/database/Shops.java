@@ -29,7 +29,7 @@ public class Shops {
     private String shopNumber;
     private String shopAddress;
     private String shopBarangay;
-    
+
 
     public String getShopBarangay() {
         return shopBarangay;

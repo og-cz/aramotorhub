@@ -43,7 +43,7 @@ public class Category {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace(); 
+            e.printStackTrace();
         }
 
         return categories;

@@ -5,52 +5,49 @@ import java.sql.PreparedStatement;
 
 public class UserService {
 
-public boolean deleteUser(int userId) {
-    String deleteCartItemsSQL = "DELETE FROM cart_item WHERE cart_id IN (SELECT cart_id FROM cart WHERE customer_id = ?)";
-    String deleteCartsSQL = "DELETE FROM cart WHERE customer_id = ?";
-    String deleteOrderItemsSQL = "DELETE FROM order_item WHERE order_id IN (SELECT order_id FROM `order` WHERE customer_id = ?)";
-    String deleteOrdersSQL = "DELETE FROM `order` WHERE customer_id = ?";
-    String deleteUserSQL = "DELETE FROM user WHERE user_id = ?";
+    public boolean deleteUser(int userId) {
+        // children first because of the foreign keys
+        String[] steps = {
+                // customer side
+                "DELETE FROM cart_item WHERE cart_id IN (SELECT cart_id FROM cart WHERE customer_id = ?)",
+                "DELETE FROM cart WHERE customer_id = ?",
+                "DELETE FROM order_item WHERE order_id IN (SELECT order_id FROM `order` WHERE customer_id = ?)",
+                "DELETE FROM `order` WHERE customer_id = ?",
+                // seller side, their products can sit in other people's carts and orders
+                "DELETE FROM cart_item WHERE product_id IN (SELECT product_id FROM product WHERE seller_id = ?)",
+                "DELETE FROM order_item WHERE product_id IN (SELECT product_id FROM product WHERE seller_id = ?)",
+                "DELETE FROM product WHERE seller_id = ?"
+        };
 
-    try (Connection conn = DatabaseConnection.connect()) {
-        conn.setAutoCommit(false); 
-        try (
-            PreparedStatement deleteCartItemsStmt = conn.prepareStatement(deleteCartItemsSQL);
-            PreparedStatement deleteCartsStmt = conn.prepareStatement(deleteCartsSQL);
-            PreparedStatement deleteOrderItemsStmt = conn.prepareStatement(deleteOrderItemsSQL);
-            PreparedStatement deleteOrdersStmt = conn.prepareStatement(deleteOrdersSQL);
-            PreparedStatement deleteUserStmt = conn.prepareStatement(deleteUserSQL)
-        ) {
-            
-            deleteCartItemsStmt.setInt(1, userId);
-            deleteCartItemsStmt.executeUpdate();
+        try (Connection conn = DatabaseConnection.connect()) {
+            conn.setAutoCommit(false);
+            try {
+                for (String sql : steps) {
+                    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        stmt.setInt(1, userId);
+                        stmt.executeUpdate();
+                    }
+                }
 
-           
-            deleteCartsStmt.setInt(1, userId);
-            deleteCartsStmt.executeUpdate();
+                int rowsDeleted;
+                try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM user WHERE user_id = ?")) {
+                    stmt.setInt(1, userId);
+                    rowsDeleted = stmt.executeUpdate();
+                }
 
-            deleteOrderItemsStmt.setInt(1, userId);
-            deleteOrderItemsStmt.executeUpdate();
+                conn.commit();
+                return rowsDeleted > 0;
+            } catch (Exception e) {
+                conn.rollback();
+                e.printStackTrace();
+                return false;
+            }
 
-            deleteOrdersStmt.setInt(1, userId);
-            deleteOrdersStmt.executeUpdate();
-
-            deleteUserStmt.setInt(1, userId);
-            int rowsDeleted = deleteUserStmt.executeUpdate();
-
-            conn.commit(); 
-            return rowsDeleted > 0;
         } catch (Exception e) {
-            conn.rollback(); 
             e.printStackTrace();
             return false;
         }
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return false;
     }
-}
 
     public boolean updateUser(User user) {
         String sql = "UPDATE user SET email = ?, password = ?, first_name = ?, last_name = ?, "
