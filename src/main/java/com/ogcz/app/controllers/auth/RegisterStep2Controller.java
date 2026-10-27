@@ -37,7 +37,6 @@ public class RegisterStep2Controller {
     @FXML
     private Button submitButton;
 
-    private Alert alert;
     private AuthService authService;
 
     public void setAuthService(AuthService authService) {
@@ -45,12 +44,11 @@ public class RegisterStep2Controller {
     }
 
     private void showAlert(String title, String message) {
-        alert = new Alert(Alert.AlertType.INFORMATION);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
 
         alert.setTitle(title);
         alert.setContentText(message);
         alert.setHeaderText(null);
-
 
         Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
         stage.getIcons().add(new Image(this.getClass().getResource("/assets/z_favicon.png").toString()));
@@ -80,22 +78,18 @@ public class RegisterStep2Controller {
                 roleFieldMenu.setText(selectedRole.toUpperCase());
             });
         });
-
     }
 
     @FXML
     void handleSubmitButtonClick(MouseEvent event) {
-        System.out.println("submit clicked");
-
         if (!addressField.getText().matches("^.{10,100}$")) {
             showAlert("ARA Motorhub", "Invalid address! Must be between 10 and 100 characters");
             return;
         }
 
-
         if (selectedBarangay == null || selectedDistrict == null || selectedRole == null) {
             showAlert("ARA Motorhub", "Please fill in the blanks");
-            return;   
+            return;
         }
 
         authService.setAddress(addressField.getText());
@@ -103,34 +97,28 @@ public class RegisterStep2Controller {
         authService.setBarangay(selectedBarangay);
         authService.setRole(selectedRole);
 
-        authService.showNewUser();
-        authService.registerNewUser();
-
-        showAlert("ARA Motorhub", "Your profile has been updated successfully!");
-
-        if (!alert.isShowing()) {
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/Login.fxml"));
-                Parent newRoot = loader.load();
-
-                Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-
-                Scene newScene = new Scene(newRoot);
-                currentStage.setScene(newScene);
-                currentStage.show();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        if (authService.registerNewUser() == null) {
+            showAlert("ARA Motorhub", "Registration failed. Please try again.");
+            return;
         }
 
-        return;
+        showAlert("ARA Motorhub", "Your account has been created! You can now sign in.");
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/Login.fxml"));
+            Parent newRoot = loader.load();
+
+            Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            currentStage.setScene(new Scene(newRoot));
+            currentStage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
     void handleSignInButtonClick(MouseEvent event) {
-        System.out.println("Sign in go back");
-
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/Login.fxml"));
             Parent newRoot = loader.load();

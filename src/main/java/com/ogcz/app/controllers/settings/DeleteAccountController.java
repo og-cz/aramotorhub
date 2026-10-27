@@ -34,18 +34,7 @@ public class DeleteAccountController {
     @FXML
     private Button logOutButton;
 
-    private Alert alert;
-
-    User currentUser = UserSession.getCurrentUser();
-
-    void showAlert(String title, String message) {
-        alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setContentText(message);
-        Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
-        stage.getIcons().add(new Image(this.getClass().getResource("/assets/z_favicon.png").toString()));
-        alert.showAndWait();
-    }
+    private final User currentUser = UserSession.getCurrentUser();
 
     @FXML
     void handleDelAccButton(ActionEvent event) {
@@ -71,7 +60,6 @@ public class DeleteAccountController {
                 boolean deleted = userService.deleteUser(currentUser.getUserId());
 
                 if (deleted) {
-                    UserSession.setCurrentUser(null);
 
                     Alert infoAlert = new Alert(Alert.AlertType.INFORMATION);
                     infoAlert.setTitle("ARA Motorhub");

@@ -73,7 +73,7 @@ public class LoginController {
 
     @FXML
     private void handleSignInClick(ActionEvent event) {
-        String email = emailField.getText();
+        String email = emailField.getText().trim();
         String password = passwordField.getText();
 
         if (email.isEmpty() || password.isEmpty()) {
@@ -121,8 +121,6 @@ public class LoginController {
 
     @FXML
     private void handleSignUpClick(MouseEvent event) {
-        System.out.println("signup pressed");
-
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/RegisterStep1.fxml"));
             Parent newRoot = loader.load();
@@ -147,36 +145,19 @@ public class LoginController {
     @FXML
     private void handleImageClick(MouseEvent event) {
 
-        {
-            String imagePath = isFirstButton
-                    ? "resources/assets/ara_login_button_a.png"
-                    : "resources/assets/ara_login_button_b.png";
+        String buttonPath = isFirstButton
+                ? "/assets/ara_login_button_a.png"
+                : "/assets/ara_login_button_b.png";
+        pictureButton.setImage(new Image(getClass().getResourceAsStream(buttonPath)));
+        isFirstButton = !isFirstButton;
 
-            Image image = new Image(getClass().getClassLoader().getResourceAsStream(imagePath));
-
-            if (image.isError()) {
-                System.out.println("Image failed to load: " + imagePath);
-            } else {
-                pictureButton.setImage(image);
-            }
-
-            isFirstButton = !isFirstButton;
-        }
-
-        System.out.println("Login Window: Picture Changed");
         FadeTransition fadeOut = new FadeTransition(Duration.millis(400), ara_login_a);
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
 
         fadeOut.setOnFinished(e -> {
-            String imagePath = isFirstImage ? "resources/assets/ara_login_a.png" : "resources/assets/ara_login_b.png";
-            Image image = new Image(getClass().getClassLoader().getResourceAsStream(imagePath));
-
-            if (image.isError()) {
-                System.out.println("Image failed to load: " + imagePath);
-            }
-
-            ara_login_a.setImage(image);
+            String imagePath = isFirstImage ? "/assets/ara_login_a.png" : "/assets/ara_login_b.png";
+            ara_login_a.setImage(new Image(getClass().getResourceAsStream(imagePath)));
             isFirstImage = !isFirstImage;
 
             FadeTransition fadeIn = new FadeTransition(Duration.millis(400), ara_login_a);
@@ -202,7 +183,6 @@ public class LoginController {
         backgroundPane4.setFocusTraversable(true);
         Platform.runLater(dummyFocus::requestFocus);
 
-        
         emailField.textProperty().addListener((obs, oldText, newText) -> {
             if (newText.isEmpty()) {
                 emailField.setStyle("-fx-border-color: rgba(0,0,0,0.05); -fx-border-radius: 5; -fx-background-radius: 5; -fx-focus-color: #B7B710; -fx-faint-focus-color: transparent;"); // default color when empty
@@ -217,7 +197,6 @@ public class LoginController {
             } else {
                 passwordField.setStyle("-fx-border-color: #B7B710; -fx-border-radius: 5; -fx-background-radius: 5; -fx-focus-color: #B7B710; -fx-faint-focus-color: transparent;");
             }
-        }); 
-        
+        });
     }
 }

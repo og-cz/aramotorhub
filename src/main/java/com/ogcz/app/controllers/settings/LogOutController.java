@@ -25,23 +25,14 @@ public class LogOutController {
     @FXML
     private HBox handleDeleteAccount;
 
-
     @FXML
     private Button logOutButton;
 
     @FXML
     void handleLogOutButton(ActionEvent event) {
-        System.out.println("Logout clicked");
         Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         SettingsWindowHelper.logout(currentStage);
     }
-
-
-
-
-
-
-
 
     // switching scene dont touch
     @FXML
@@ -70,5 +61,4 @@ public class LogOutController {
             e.printStackTrace();
         }
     }
-
 }

@@ -35,13 +35,8 @@ public class RegisterStep1Controller {
     @FXML
     private PasswordField passwordField;
 
-
-
-   
     @FXML
     void handleNextButtonClick(ActionEvent event) {
-        System.out.println("Next Clicked");
-
         if (emailField.getText().isEmpty() || firstNameField.getText().isEmpty() || lastNameField.getText().isEmpty() || passwordField.getText().isEmpty()) {
             showAlert("ARA Motorhub", "Please fill in all blanks");
             return;
@@ -56,8 +51,7 @@ public class RegisterStep1Controller {
             showAlert("ARA Motorhub", "Invalid last name");
             return;
         }
-    
-      
+
         if (!(emailField.getText().contains("@") && emailField.getText().endsWith(".com"))) {
             showAlert("ARA Motorhub", "Email must contain '@' and end with '.com'");
             return;
@@ -68,22 +62,23 @@ public class RegisterStep1Controller {
             return;
         }
 
-
-        
         AuthService authService = new AuthService();
+        if (authService.emailExists(emailField.getText().trim())) {
+            showAlert("ARA Motorhub", "An account with this email already exists.");
+            return;
+        }
+
         authService.setFirstName(firstNameField.getText());
         authService.setLastName(lastNameField.getText());
-        authService.setEmail(emailField.getText());
+        authService.setEmail(emailField.getText().trim());
         authService.setPassword(passwordField.getText());
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/RegisterStep2.fxml"));
             Parent newRoot = loader.load();
 
-
-                RegisterStep2Controller controller = loader.getController();
-                controller.setAuthService(authService);  
-
+            RegisterStep2Controller controller = loader.getController();
+            controller.setAuthService(authService);
 
             Stage currentStage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             Scene newScene = new Scene(newRoot);
@@ -95,14 +90,9 @@ public class RegisterStep1Controller {
         }
     }
 
-
-
-
     @FXML
     void handleSignInButtonClick(MouseEvent event) {
-        System.out.println("Sign in go back");
-
-            try {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auth/Login.fxml"));
             Parent newRoot = loader.load();
 
