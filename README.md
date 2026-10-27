@@ -7,20 +7,6 @@
 > **find** your  
 > motor **needs.**
 
-<!--
-## Table of Contents
-
--  [Project Overview](#project-overview)
--  [How to Run](#how-to-run)
--  [Technologies Used](#technologies-used)
--  [Features](#features)
-  -  [Admin Side](#admin-side)
-  -  [Customer Side](#customer-side)
-  -  [Seller Side](#seller-side)
-  -  [User Settings](#user-settings)
--  [Developer](#developer)
--->
-
 ---
 
 ## Project Overview
@@ -33,9 +19,9 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
 
 <br>
 
-<div align="center">
-  <img src="sql/readme/ara-logo.gif" alt="ARA Motorhub Animated Logo" width="300"/>
-</div>
+<p align="center">
+  <img src="./sql/readme/ara-logo.gif" alt="ARA Motorhub Animated Logo" width="300"/>
+</p>
 
 <br>
 <br>
@@ -63,12 +49,12 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
 
 ## How to Run
 
-> **Note:** Make sure Java 17+ and Maven are installed. JavaFX libraries are automatically handled by Maven.
+> **Note:** JavaFX and the MySQL driver are pulled in by Maven, no manual setup needed.
 
 ### Prerequisites:
 
-- Java JDK 17+
-- Apache Maven (i have maven 8.9.11)
+- Java JDK 21+
+- Apache Maven 3.8+
 - MySQL Server / XAMPP
 
 ### Steps to Run:
@@ -82,21 +68,35 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
 
 2. **Setup Database:**
 
-- Import the SQL file from /sql-database/ into phpMyAdmin or MySQL Workbench.
+- Create a database named `aramotorhubdb` and import `sql/aramotorhubdb.sql` into it (phpMyAdmin or MySQL Workbench).
 
 3. **Configure Database Connection:**
 
 - Open DatabaseConnection.java under:
   ```bash
-  src/com/ogcz/app/database/DatabaseConnection.java
+  src/main/java/com/ogcz/app/database/DatabaseConnection.java
   ```
-- Update with your local database credentials (host, db name, user, password).
+- Update with your local database credentials (host, db name, user, password). The defaults match a fresh XAMPP install (`root`, no password).
 
 4. **Run the app using Maven:**
 
    ```bash
-    mvn clean javafx:run
+   mvn clean javafx:run
    ```
+
+---
+
+## Database Design
+
+<div align="center">
+  <img src="erd-model-aramotorhub.png" alt="ARA Motorhub ERD" width="800"/>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="er-diagram-chens-model-aramotorhub.jpg" alt="ARA Motorhub ER Diagram (Chen's model)" width="800"/>
+</div>
 
 ---
 
@@ -120,7 +120,7 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
 - Full CRUD operations:
   - Manage Admins, Users, Stores
   - Manage Inventory, Products, Categories
-- Stock Management: No Stock, Available, Cart, etc.
+- Stock Management: Available / Out of Stock
 
 ### Customer Side
 
@@ -128,9 +128,9 @@ ARA Motorhub is a desktop e-commerce and management system for motorcycle parts,
 - Customer Home Pages
 - Buying Process:
   - Search & Filter Products
-  - Add to Cart (with Spinner Quantity)
+  - Add to Cart (with Spinner Quantity, capped at available stock)
   - View Seller Shops
-  - Checkout with Card Payment
+  - Checkout (stock is deducted when the order is placed)
 
 ### Seller Side
 
