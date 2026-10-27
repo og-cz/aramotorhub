@@ -1,6 +1,9 @@
 # Maven output
 /target/
 
+# old manual build output
+/bin/
+
 # IntelliJ IDEA
 .idea/
 /*.iml
@@ -14,8 +17,8 @@
 .vscode/
 
 # OS-specific
-.DS_Store        # macOS
-Thumbs.db        # Windows
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log
@@ -24,6 +27,6 @@ Thumbs.db        # Windows
 *.env
 *.db
 *.sql
+!sql/aramotorhubdb.sql
 
 *.class
-.vscode
